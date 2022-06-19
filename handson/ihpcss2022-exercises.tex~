@@ -1,0 +1,398 @@
+\documentclass{article}
+\usepackage{epcc}
+\usepackage{hyperref}
+\usepackage{listings}
+
+\title{International HPC Summer School 2022 \\
+  MPI and OpenMP Exercises}
+
+\begin{document}
+
+\author{David Henty, EPCC}
+
+\date{}
+
+\makeEPCCtitle
+
+\vspace{-1.0cm}
+
+\section{Setup}
+
+I assume you have cloned the repository
+\texttt{https://github.com/davidhenty/ihpcss2022.git} and followed the
+instructions in the {\em Bridges2 Crib Sheet} so that you can log on
+to Bridges2 and compile and run parallel programs in C, Fortran and
+Python (as appropriate).
+
+\section{Parallel calculation of $\pi$}
+
+An approximation to the value $\pi$ can be obtained from the
+following expression
+
+\[
+\frac{\pi}{4} = \int_0^1 \frac{dx}{1 + x^2}
+\approx \frac{1}{N} \sum_{i=1}^{N} \ \ \frac{1}{1 + \left(
+\frac{i-\frac{1}{2}}{N} \right) ^2}
+\]
+
+where the answer becomes more accurate with increasing $N$. Iterations
+over $i$ are independent so the calculation can be parallelised.
+
+You have been given solutions in C, Fortran and Python that set $N =
+840$. This number is divisible by 2, 3, 4, 5, 6, 7 and 8 which is
+convenient when you parallelise the calculation!
+
+The algorithm is as follows:
+
+\begin{enumerate}
+
+\item Different processes do the computation for different ranges of
+  $i$. For example, on two processes: rank 0 would do $i = 1, 2,
+  \ldots, \frac{N}{2}$; rank 1 would do $i = \frac{N}{2}+1,
+  \frac{N}{2}+2, \ldots, N$. Each process records its own partial sum
+  in \texttt{partialpi}.
+
+\item We now accumulate these partial sums by sending them to
+a controller (e.g. rank 0) to add up:
+
+\begin{itemize}
+
+\item all processes (except the controller) send their partial sum to the
+controller
+
+\item the controller receives the values from all the other processes,
+adding them to its own partial sum
+
+\end{itemize}
+
+\end{enumerate}
+
+  The program uses the MPI routines {\tt MPI\_Ssend} (synchronous send) and {\tt MPI\_Recv}.
+
+Note that:
+
+\begin{itemize}
+
+  \item In real MPI programs you would use standard mode
+    \texttt{MPI\_Send} not synchronous \texttt{MPI\_Ssend}. However, it is much better to use synchronous
+    send when developing programs as its behaviour is completely
+    predictable, unlike \texttt{MPI\_Send} which is may be either
+    synchronous or asynchronous depending on circumstances.
+
+    \item For a standard reduction pattern like this, you would use
+      the collective call \texttt{MPI\_Reduce} in a real
+      program. However, imlementing it by hand using point-to-point
+      communications makes a very good teaching exercise.
+
+\end{itemize}
+
+\subsection{Timing MPI Programs}
+
+The {\tt MPI\_Wtime()} routine returns a double-precision floating-point
+number which represents elapsed wall-clock time in seconds. The timer
+has no defined starting-point, so in order to time a piece of code, two
+calls are needed and the difference should be taken between them.
+
+There are a number of important considerations when timing a
+parallel program:
+
+\begin{enumerate}
+
+\item Due to system variability, it is not possible to accurately time
+  any program that runs for a very short time. A rule of thumb is
+  that you cannot trust any measurement much less than one
+  second.
+
+\item To ensure a reasonable runtime, you will probably have to repeat
+  the calculation many times within a do/for loop. Make sure that you
+  remove any print statements from within the loop, otherwise there will
+  be far too much output and you will simply be measuring the time taken
+  to print to screen.
+
+\item Due to the SPMD nature of MPI, each process will report
+  a different time as they are all running independently. A simple way
+  to avoid confusion is to synchronise all processes when timing, e.g.
+\begin{verbatim}
+MPI_Barrier(MPI_COMM_WORLD);  // Line up at the start line
+tstart = MPI_Wtime();         // Fire the gun and start the clock
+...                           // Code to be timed in here ...
+MPI_Barrier(MPI_COMM_WORLD);  // Wait for everyone to finish
+tstop  = MPI_WTime();         // Stop the clock
+\end{verbatim}
+
+Note that the barrier is only needed to get consistent timings --
+it should not affect code correctness.
+
+With synchronisation in place, all processes will record roughly the
+same time (the time of the slowest process) and you only need to print
+it out on a single process (e.g. rank 0).
+
+\item To get meaningful timings for more than a few processes you must
+  run on the backend nodes using \verb+sbatch+. If you run interactively on
+  Cirrus then you will share CPU-cores with other users, and may have
+  more MPI processes than physical cores, so will not observe reliable
+  speedups.
+
+\end{enumerate}
+
+\subsection{Extra Exercises}
+
+\begin{enumerate}
+
+\item Use the function {\tt MPI\_Wtime} (see above) to record the time it
+takes to perform the calculation. For a given value of $N$, does the
+time decrease as you increase the number of processes? Note that to
+ensure the calculation takes a sensible amount of time (e.g. more
+than a second) you will probably have to perform the calculation of
+$\pi$ thousands of times or use a very large value of $N$.
+
+\item Ensure your program works correctly if $N$ is not an exact
+multiple of the number of processes $P$.
+
+\item Write two versions of the code to sum the partial values: one
+where the controller does explicit receives from each of the $P-1$ other
+processes in turn, the other where it issues $P-1$ receives each from
+any source (using wildcarding).
+
+\item Print out the final value of $\pi$ to its full precision (e.g.. 10
+decimal places for single precision, or 20 for double). Do your two
+versions give {\em exactly} the same result as each other? Does each
+version give {\em exactly} the same value every time you run it?
+
+\item To fix any problems for the wildcard version, you can receive the
+values from all the processors first, then add them up in a specific
+order afterwards. The controller should declare a small array and place the
+result from process $i$ in position $i$ in the array (or $i+1$ for
+Fortran!). Once all the slots are filled, the final value can be
+calculated. Does this fix the problem?
+
+\item You have to repeat the entire calculation many times if you want
+to time the code. When you do this, print out the value of $\pi$ after
+the final repetition. Do both versions get a reasonable answer? Can you
+spot what the problem might be for the wildcard version? Can you think
+of a way to fix this using tags?
+
+\end{enumerate}
+
+\section{Traffic Model}
+
+The aim of this exercise is to take a simple example, the 1D traffic
+model as described in the lectures, and parallelise it in various
+ways. Although this code is probably not sufficiently complicated to
+show substantial performance differences, the idea is for you to
+experiment with different techniques in the simple traffic model
+before implementing them in a real MPI application.
+
+You will be given source code, implemented in C, Fortran and Python, that
+contains:
+
+\begin{enumerate}
+
+\item a working serial code;
+
+\item a working MPI code;
+
+\item a working OpenMP code (not in Python).
+
+\end{enumerate}
+
+You can compile the C and Fortran codes using the supplied
+\texttt{Makefile} - just type \texttt{make} whenever you make any
+changes and the relevant files will automatically be recompiled.
+
+\subsection{Verification}
+
+The way it is written the code should give {\bf exactly} the same
+answer for C and Fortran regardless of whether it is serial or
+parallel. For a road of length 320000000 and a target density of 0.52,
+the velocity at iteration 100 should be 0.898955 (to 6 decimal
+places). If you get a different answer then your code is probably
+wrong!
+
+Python uses a different random generator, but the serial and parallel
+answers should still be identical. For a road of length 320000000 and
+a target density of 0.52, the velocity at iteration 100 should be
+0.898960.
+
+{\bf Note that the simple MPI parallelisation assumes that $N$ is an exact
+multiple of $P$ and will give incorrect answers if this is not the
+case.}
+
+You can experiment with increasing the length of the road -- just
+change the value of {\verb+ncell+} near the top of the main program.
+If you decide to use a road of a different length, you should re-run
+the serial code to get a new baseline result. The length of the road
+cannot be larger than 2 billion as it is stored in a standard integer.
+
+\subsection{MPI exercises}
+
+These range from fairly basic to very advanced. Please attempt
+whatever ones you feel comfortable with.
+
+\begin{enumerate}
+
+\item Run the MPI code on a range of process counts (e.g. 1, 2, 4, 8,
+  16, 32, 64 and 128) and plot a graph of the speedup against the
+  number of processes.
+
+\item Do the same with very short and very long roads and compare the
+  performance results.
+
+\item The global sum requires a parallel reduction
+  \verb+MPI_Allreduce+ which is an expensive operation. Modify the
+  code so it only calls reductions when necessary; investigate the
+  effect on performance.
+
+\item Replace the \texttt{MPI\_Sendrecv} call using non-blocking
+  operations. There are a number of options:
+
+\begin{enumerate}
+
+\item a non-blocking send (\verb+MPI_ISsend+), a blocking receive
+  (\verb+MPI_Recv+) and a wait (\verb+MPI_Wait+);
+
+\item a non-blocking receive, a blocking send and a wait;
+
+\item a non-blocking send, a non-blocking receive and multiple waits
+  (e.g. \verb+MPI_Waitall+).
+
+\end{enumerate}
+
+When developing the non-blocking code, you should use synchronous send
+(i.e \verb+MPI_Ssend+ / \verb+MPI_Issend+) as opposed to standard send
+(\verb+MPI_Send+ / \verb+MPI_Isend+). This ensures an incorrect code is
+guaranteed to deadlock; with standard sends, an incorrect code might
+just happen to run correctly which is not desirable.
+
+Once working you
+can switch to \verb+MPI_Isend+ which should improve performance.
+
+\item Put an \verb+MPI_Barrier+ at the end of every
+  iteration. Although this is {\bf completely unnecessary}, many
+  people do this kind of thing ``just to be safe''. What is the effect
+  on performance?
+
+\item Implement the non-blocking halo exchange using {\em persistent
+  communications}. In the case of running on 2 processes, where the up
+  and down neighbour are both the same process, can you guarantee that
+  the sends and receives will match correctly?
+
+\item Try to overlap some of the computation with communications,
+  i.e. update the interior cells of the road while waiting for the
+  halo data to arrive.
+
+\item Minimise the latency overhead by using deep halos, i.e. exchange
+  more than one boundary element and then do multiple iterations
+  before the next halo swap. It is much easier to implement an
+  explicit depth first (e.g. 2 halo points) before attempting the
+  general case of depth $D$.
+
+\item Combine deep halos with overlapping communication and calculation.
+
+% \item Perform the halo swaps the neighbourhood collective operation
+%   \verb+MPI_Neighbor_alltoallv+. You will need to create a 1D
+%   Cartesian topology using \verb+MPI_Cart_create+ with periodic
+%   boundary conditions.
+% \end{enumerate}
+
+% \newpage
+% 
+% \subsection{\label{sec:nonperiodic}Non-periodic boundary conditions}
+% 
+% The reason that the traffic model deadlocks with a naive
+% implementation using synchronous sends is because of the periodic
+% boundary conditions: all processes are trying to send at the same
+% time. With non-periodic boundaries, however, processes at the extreme
+% ends of the road will not need to send or receive some of the data and
+% the deadlock is broken.
+% 
+% Update the traffic model to use non-periodic boundaries:
+% 
+% \begin{enumerate}
+% 
+% \item Set the halo at the exit of the road (on the last process) to be
+%   zero so cars are always free to leave;
+% 
+% \item Each iteration, set the halo data at the entrance to the road
+%   (on the first process) to be 1 with probability \verb+density+,
+%   otherwise set to zero. This maintains the same density of traffic
+%   for the whole simulation; see \verb+initroad()+ to see how to call
+%   the random number generator.
+% 
+% \item Run the code on one and many processes; does it give the same
+%   answer? Do you understand why?
+% 
+% \item Implement the halo swapping using blocking synchronous sends and
+%   receives (\verb+MPI_Ssend+ / \verb+MPI_Recv+); unlike the periodic
+%   case, the code {\bf should not} deadlock.
+% 
+% \item Compare the performance with the version using
+%   \verb+MPI_Sendrecv+ and using \verb+MPI_Send+ /
+%   \verb+MPI_Recv+. Although it works correctly, the synchronous version
+%   should be slower; do you understand why?
+% 
+
+\end{enumerate}
+
+\subsection{OpenMP exercises}
+
+\begin{enumerate}
+
+\item Run the OpenMP code on a range of thread counts (e.g. 1, 2, 6,
+  12 and 24) and plot a graph of the speedup against the number of
+  threads.
+
+\item Change the code so it only computes the total number of moves
+  when absolutely necessary. How does the impact on performance
+  compare with the equivalent optimisation in MPI?
+
+\item Before the first call to \verb+initroad()+, zero both the
+  \verb+oldroad+ and \verb+newroad+ arrays {\bf using a parallel
+    loop}. With a very long road (e.g. at least ten million cells),
+  what is the effect on performance for small and large numbers of
+  threads? Do you understand what is happening here?
+
+\item Minimise the overhead of creating parallel regions by enclosing
+  the entire iteration loop with a single parallel region. What is the
+  effect on performance?  Note that this is {\bf very challenging},
+  e.g. you will now need to implement \verb+updateroad()+ using orphaned
+  directives.
+
+\end{enumerate}
+
+\subsection{Hybrid MPI/OpenMP}
+
+\subsection{Hybrid traffic model}
+
+It should be quite simple to add OpenMP directives to the MPI code to
+make a hybrid code using the master-only model. Parallelise the
+computation in \verb+updateroad()+, and the copy-back step in
+\verb+main()+, exactly as in the pure OpenMP code. You should be able
+to leave the MPI communications as they are.
+
+Compare performance for different numbers of processes or threads on
+the same number of cores. For example, on 2 nodes with a total of 256
+cores you could use: 256 processes ($P$) with 1 thread per process
+($T$); ($P=128$, $T=2$); ($P=64$, $T=4$); $\ldots$; ($P=2$, $T=128$).
+
+\subsection{Process placement}
+
+A very important thing to investigate when running a Hybrid MPI/OpenMP
+code on any parallel system is to check you know how to ensure that
+the process and threads are distributed correctly across nodes and
+cores.
+
+By default, your a hybrid MPI/OpenMP program may not achieve good
+performance on Bridges2 as the process and threads are not optimally
+allocated to the available CPU cores. For exmaple, you may see that
+using 8 processes each with 2 threads is much slower than using 16
+processes each with single thread.
+
+See if you can find out the information you require from the Bridges2
+user guide: \\
+\verb+https://www.psc.edu/resources/bridges-2/user-guide-2/+.
+
+Phrases to look for include {\em process binding}, {\em thread
+  binding}, {\em process affinity} and {\em thread affinity}.
+
+\end{document}

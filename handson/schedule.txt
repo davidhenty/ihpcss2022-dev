@@ -1,0 +1,24 @@
+Monday June 20th
+
+13:30 General quiz
+14:00 Log on and get going
+14:15 MPI Concepts (up to sl 20, add 3 slides on Send/Send/Bsend, Python, C++)
+14:45 Go through code: mention RookieHPC!
+15:00 COFFEE
+15:30 Traffic Model (theory)
+15:45 Traffic Model (practice + go through code)
+16:00 Collectives and non-blocking: mention Isend in practice + persistent
+16:30 Work on traffic model
+17:30 CLOSE
+
+Tuesday June 21
+
+09:00 OpenMP concepts
+09:30 OpenMP Work Sharing
+10:00 Traffic model exercise
+10:30 Coffee
+11:00 MPI + OpenMP
+11:45 Q&A
+12:00 Exercise
+12:30 CLOSE
+

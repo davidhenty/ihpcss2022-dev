@@ -1,0 +1,146 @@
+\documentclass{article}
+
+\usepackage{epcc}
+
+\begin{document}
+
+\title{Crib Sheet: Bridges2 MPI \& OpenMP Exercises}
+
+\author{David Henty}
+\date{}
+\makeEPCCtitle
+
+%\vspace{-1.0cm}
+
+\section{{\label{sec:access}}Logging on}
+
+Use your username and password to access Bridges:
+\begin{verbatim}
+  [user@latop ~]$ ssh -p 2222 xsede-username@bridges2.psc.edu
+\end{verbatim}
+
+Although Bridges2 has high performance filesystems which should be
+used for large production jobs, here we will just use the home
+filesystem for simplicity.
+
+\section{Obtaining source code}
+
+All the course material, including source code, is available on github:
+
+\begin{verbatim}
+  [user@bridges2 ~]$ git clone https://github.com/davidhenty/ihpcss2022.git
+\end{verbatim}
+
+\section{Compiling code}
+
+For these initial tests, \texttt{cd} into \texttt{hello} and then the
+appropriate subdirectory for your chosen language / parallel model.
+
+You have to load a module to access MPI:
+
+\begin{verbatim}
+  [user@bridges2 ~]$ module load openmpi
+\end{verbatim}
+
+The GNU compilers (\texttt{gcc}, \texttt{g++} and \texttt{gfortran}) are
+used for compiling MPI programs via the standard wrappers
+\texttt{mpicc}, \texttt{mpicxx} and \texttt{mpif90}.
+
+So, to compile an MPI program in C:
+
+\begin{verbatim}
+  [user@bridges2 ~]$ mpicc -o hello hello.c
+\end{verbatim}
+
+
+or in Fortran:
+
+\begin{verbatim}
+  [user@bridges2 ~]$ mpif90 -o hello hello.f90
+\end{verbatim}
+
+As an interpreted language, there is no explicit compilation stage for
+Python programs.
+
+For OpenMP, you pass a special option to the GNU compilers, e.g. for C:
+
+\begin{verbatim}
+  [user@bridges2 ~]$ gcc -fopenmp -o hello hello.c
+\end{verbatim}
+
+For Fortran:
+
+\begin{verbatim}
+  [user@bridges2 ~]$ gfortran -fopenmp -o hello hello.f90
+\end{verbatim}
+
+Due to the way that the Python interpreter is implemented, threaded
+programming is problematic and there is no Python equivalent of OpenMP.
+
+\section{{\label{sec:running}}Running on Bridges2}
+
+\subsection{MPI}
+
+You cannot run MPI jobs on the login nodes. The simplest approach for
+development work on small numbers of processes is to use the
+\verb+interact+ command to access the compute nodes.
+
+For example, if you want to run on up to 8 processes:
+
+\begin{verbatim}
+  [user@bridges2 ~]$ interact -n 8
+\end{verbatim}
+    
+After a small wait you should be allocated resources and see a
+different prompt. You can then run jobs:
+
+\begin{verbatim}
+  [user@r001 ~] mpirun -n 8 ./hello
+\end{verbatim}
+
+\subsubsection{Python}
+
+Having gained access to the compute nodes using \texttt{interact}, you
+have to do some additional setup:
+
+\begin{verbatim}
+  [user@r001 ~] module load openmpi  # ??
+  [user@r001 ~] module load anaconda3
+  [user@r001 ~] pip install mpi4py
+\end{verbatim}
+
+Setting up \texttt{mpi4py}, the Python wrappers for the standard MPI
+library functions, may take some time when you first install it but
+should be much faster afterwards.
+
+You can then run using the standard MPI launcher:
+
+\begin{verbatim}
+  [user@r001 ~] mpirun -n 8 python3 ./hello.py
+\end{verbatim}
+
+\subsection{OpenMP}
+
+You can run parallel OpenMP jobs on the login nodes, but you should
+only do this for small test jobs. For example, to run on 8 threads:
+
+\begin{verbatim}
+  [user@bridges2 ~]$ export OMP_NUM_THREADS=8
+  [user@bridges2 ~]$ ./hello
+\end{verbatim}
+
+For compute intensive jobs, use the \verb+interact+ command to get
+access to dedicated resources on the compute nodes as described in the
+MPI section above.
+
+\subsubsection{Python}
+
+As mentioned above, there is no equivalent of OpenMP for Python.
+
+\section{{\label{sec:running2}}Running jobs during the Summer School}
+
+For the actual summer school we will have reservations in place to
+give you guaranteed access to resources. Instructions on how to access
+the reservations will be given at the relevant hands-on sessions.
+
+\end{document}

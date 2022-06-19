@@ -1,0 +1,11 @@
+\BOOKMARK [1][-]{section.1}{Setup}{}% 1
+\BOOKMARK [1][-]{section.2}{Parallel calculation of }{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Timing MPI Programs}{section.2}% 3
+\BOOKMARK [2][-]{subsection.2.2}{Extra Exercises}{section.2}% 4
+\BOOKMARK [1][-]{section.3}{Traffic Model}{}% 5
+\BOOKMARK [2][-]{subsection.3.1}{Verification}{section.3}% 6
+\BOOKMARK [2][-]{subsection.3.2}{MPI exercises}{section.3}% 7
+\BOOKMARK [2][-]{subsection.3.3}{OpenMP exercises}{section.3}% 8
+\BOOKMARK [2][-]{subsection.3.4}{Hybrid MPI/OpenMP}{section.3}% 9
+\BOOKMARK [2][-]{subsection.3.5}{Hybrid traffic model}{section.3}% 10
+\BOOKMARK [2][-]{subsection.3.6}{Process placement}{section.3}% 11

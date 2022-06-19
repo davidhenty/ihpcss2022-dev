@@ -1,0 +1,11 @@
+Update exercises with params relevant for this course
+
+  - done but P-naive takes 600 seconds so need to think about this
+  
+Create slurm scripts for all exercises and tailor Makefiles for Bridges
+
+Update exercise sheet including pi example and some ideas from
+previous year(s) + add python
+
+Update quiz based on Discnet but add questions about MPI knowledge/usage
+Update language questions based on what I did for Surbey MPI 23/03/22
