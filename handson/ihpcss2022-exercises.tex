@@ -60,7 +60,7 @@ a controller (e.g. rank 0) to add up:
 \item all processes (except the controller) send their partial sum to the
 controller
 
-\item the controller receives the values from all the other processes,
+\item the controller receives values from all the other processes,
 adding them to its own partial sum
 
 \end{itemize}
@@ -81,7 +81,7 @@ Note that:
 
     \item For a standard reduction pattern like this, you would use
       the collective call \texttt{MPI\_Reduce} in a real
-      program. However, imlementing it by hand using point-to-point
+      program. However, implementing it by hand using point-to-point
       communications makes a very good teaching exercise.
 
 \end{itemize}
@@ -197,8 +197,9 @@ contains:
 \end{enumerate}
 
 You can compile the C and Fortran codes using the supplied
-\texttt{Makefile} - just type \texttt{make} whenever you make any
-changes and the relevant files will automatically be recompiled.
+\texttt{Makefile} by typing \texttt{make}. Whenever you make any
+changes, type \texttt{make} again and the relevant files will
+automatically be recompiled.
 
 \subsection{Verification}
 
@@ -220,7 +221,7 @@ case.}
 
 You can experiment with increasing the length of the road -- just
 change the value of {\verb+ncell+} near the top of the main program.
-If change the road length, you should re-run the serial code to get a
+If you change the road length, you should re-run the serial code to get a
 new baseline result. The length of the road cannot be larger than 2
 billion as it is stored in a standard integer.
 
@@ -277,15 +278,28 @@ can switch to \verb+MPI_Isend+ which should improve performance.
   and down neighbour are both the same process, can you guarantee that
   the sends and receives will match correctly?
 
-\item Try to overlap some of the computation with communications,
-  i.e. update the interior cells of the road while waiting for the
-  halo data to arrive.
+\item Try to overlap some of the computation with communications. The
+  way to do this is:
+
+  \begin{itemize}
+  \item issue non-blocking sends and receives for the halo cells;
+   \item update the interior cells $i = 2, 3, \ldots, N-1$ which do not depend on the halo cells;
+   \item wait for the halo data to arrive;
+   \item update the boundary cells $i=1$ and $i=N$.
+  \end{itemize}
+
+  The idea here is that the communications takes place at the same
+  time as the calculation of the interior cells, thus speeding the
+  program up. Note that whether this works in practice very much
+  depends on the details of your MPI implementation and the network.
 
 \item Minimise the latency overhead by using deep halos, i.e. exchange
   more than one boundary element and then do multiple iterations
   before the next halo swap. It is much easier to implement an
   explicit depth first (e.g. 2 halo points) before attempting the
-  general case of depth $D$.
+  general case of depth $D$. For $D=2$ you would swap two halo cells
+  every second interation, and update the entire road twice each
+  iteration.
 
 \item Combine deep halos with overlapping communication and calculation.
 
@@ -338,29 +352,26 @@ can switch to \verb+MPI_Isend+ which should improve performance.
 
 \begin{enumerate}
 
-\item Run the OpenMP code on a range of thread counts (e.g. 1, 2, 6,
-  12 and 24) and plot a graph of the speedup against the number of
-  threads.
+\item Run the OpenMP code on a range of thread counts (e.g. 1, 2, 4,
+  8, 16, 32, 64 and 128) and plot a graph of the speedup against the
+  number of threads. How does this compare to the MPI speedup?
 
-\item Change the code so it only computes the total number of moves
-  when absolutely necessary. How does the impact on performance
-  compare with the equivalent optimisation in MPI?
+% \item Change the code so it only computes the total number of moves
+%   when absolutely necessary. How does the impact on performance
+%   compare with the equivalent optimisation in MPI?
 
 \item Before the first call to \verb+initroad()+, zero both the
   \verb+oldroad+ and \verb+newroad+ arrays {\bf using a parallel
-    loop}. With a very long road (e.g. at least ten million cells),
-  what is the effect on performance for small and large numbers of
-  threads? Do you understand what is happening here?
+    loop}. What is the effect on performance for small and large
+  numbers of threads? Do you understand what is happening here?
 
-\item Minimise the overhead of creating parallel regions by enclosing
-  the entire iteration loop with a single parallel region. What is the
-  effect on performance?  Note that this is {\bf very challenging},
-  e.g. you will now need to implement \verb+updateroad()+ using orphaned
-  directives.
+% \item Minimise the overhead of creating parallel regions by enclosing
+%   the entire iteration loop with a single parallel region. What is the
+%   effect on performance?  Note that this is {\bf very challenging},
+%   e.g. you will now need to implement \verb+updateroad()+ using orphaned
+%   directives.
 
 \end{enumerate}
-
-\subsection{Hybrid MPI/OpenMP}
 
 \subsection{Hybrid traffic model}
 
@@ -378,14 +389,14 @@ cores you could use: 256 processes ($P$) with 1 thread per process
 \subsection{Process placement}
 
 A very important thing to investigate when running a Hybrid MPI/OpenMP
-code on any parallel system is to check you know how to ensure that
+code on any parallel system is to ensure that
 the process and threads are distributed correctly across nodes and
 cores.
 
 By default, your a hybrid MPI/OpenMP program may not achieve good
 performance on Bridges2 as the process and threads are not optimally
-allocated to the available CPU cores. For exmaple, you may see that
-using 8 processes each with 2 threads is much slower than using 16
+allocated to the available CPU cores. For example, you may see that
+using 8 processes each with 2 threads is much slower than 16
 processes each with single thread.
 
 See if you can find out the information you require from the Bridges2
