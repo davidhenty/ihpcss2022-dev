@@ -36,7 +36,7 @@ All the course material, including source code, is available on github:
 For these initial tests, \texttt{cd} into \texttt{hello} and then the
 appropriate subdirectory for your chosen language / parallel model.
 
-You have to load a module to access MPI:
+Whenever you log in you have to load a module to access MPI:
 
 \begin{verbatim}
   [user@bridges2 ~]$ module load openmpi
@@ -46,12 +46,11 @@ The GNU compilers (\texttt{gcc}, \texttt{g++} and \texttt{gfortran}) are
 used for compiling MPI programs via the standard wrappers
 \texttt{mpicc}, \texttt{mpicxx} and \texttt{mpif90}.
 
-So, to compile an MPI program in C:
+To compile an MPI program in C:
 
 \begin{verbatim}
   [user@bridges2 ~]$ mpicc -o hello hello.c
 \end{verbatim}
-
 
 or in Fortran:
 
@@ -60,7 +59,17 @@ or in Fortran:
 \end{verbatim}
 
 As an interpreted language, there is no explicit compilation stage for
-Python programs.
+Python programs. However, you need to do some additional setup:
+
+\begin{verbatim}
+  [user@bridges2 ~]$ module load anaconda3
+  (base) [user@bridges2 ~]$ pip install mpi4py
+  (base) [user@bridges2 ~]$ conda deactivate
+\end{verbatim}
+
+Setting up \texttt{mpi4py}, the Python wrappers for the standard MPI
+library functions, may take some time when you first install it but
+should be much faster afterwards.
 
 For OpenMP, you pass a special option to the GNU compilers, e.g. for C:
 
@@ -92,31 +101,16 @@ For example, if you want to run on up to 8 processes:
 \end{verbatim}
     
 After a small wait you should be allocated resources and see a
-different prompt. You can then run jobs:
+different prompt. You can then run C or Fortran executables:
 
 \begin{verbatim}
-  [user@r001 ~] mpirun -n 8 ./hello
+  [user@r001 ~] mpirun -n 8 hello
 \end{verbatim}
 
-\subsubsection{Python}
-
-Having gained access to the compute nodes using \texttt{interact}, you
-have to do some additional setup:
+or for Python:
 
 \begin{verbatim}
-  [user@r001 ~] module load openmpi  # ??
-  [user@r001 ~] module load anaconda3
-  [user@r001 ~] pip install mpi4py
-\end{verbatim}
-
-Setting up \texttt{mpi4py}, the Python wrappers for the standard MPI
-library functions, may take some time when you first install it but
-should be much faster afterwards.
-
-You can then run using the standard MPI launcher:
-
-\begin{verbatim}
-  [user@r001 ~] mpirun -n 8 python3 ./hello.py
+  [user@r001 ~] mpirun -n 8 python3 hello.py
 \end{verbatim}
 
 \subsection{OpenMP}
